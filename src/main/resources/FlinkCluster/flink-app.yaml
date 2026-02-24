@@ -5,7 +5,7 @@ metadata:
   namespace: confluent
 spec:
   flinkEnvironment: flink-env1
-  image: flink-alert:1.0.0
+  image: jrramani12/flink-alert:1.0.0
   flinkVersion: v1_20
   flinkConfiguration:
     "env.java.opts.all": >

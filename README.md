@@ -1,15 +1,16 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# Running the Flink Alert Trigger Job 
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+This document provides step-by-step instructions for building, deploying, and running the Alert Trigger Job.
+
+## Prerequisites
+
+1. **Kubernetes cluster** with Flink operator, CMF, CFK installed
+2. **Docker** installed and configured
+3. **Maven** 3.6+ installed
+4. **kubectl** configured to access your cluster
 
 
-# Install Confluent Manager for Apache Flink (CMF): 
+## Install CMF, FKO, CFK (If needed)
 
 Reference: https://docs.confluent.io/platform/current/flink/installation/helm.html
 
@@ -23,173 +24,237 @@ helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernete
 helm upgrade --install cmf confluentinc/confluent-manager-for-apache-flink --namespace confluent --set cmf.sql.production=false
 helm upgrade --install confluent-operator confluentinc/confluent-for-kubernetes  --set enableCMFDay2Ops=true
 ```
-# Infra Prerequisites
 
-Navigate to the resources/k8s/prerequisites directory and follow the instructions in the `README.md` file to set up the necessary infrastructure components.
+## Complete Flow
 
-1. Apply the cmf-rest class using the following command:
+### Optional: Skip Step 1 and Step 2 (Use Prebuilt Docker Image)
 
-```bash
-kubectl apply -f cmf-rest-class.yaml
-```
-2. Apply the flink environment using the following command:
+If you do not want to build the JAR and Docker image locally, pull the prebuilt image:
 
 ```bash
-kubectl apply -f flink-env.yaml
+docker pull jrramani12/flink-alert:1.0.0
 ```
-3. Create a pvc using the following command:
-```bash
-kubectl apply -f flink-pvc.yaml
-```
-4. Navigate to resources/kafka directory. Setup Kraft, Kafka, Schema Registry, and Control Center using the provided command.
 
-```bash
-kubectl apply -f confluent-platform.yaml
-```
-5. Port-forward the Control Center service to access it from your local machine:
+If you use this image, you can skip:
+- **Step 1: Build the Project**
+- **Step 2: Build Docker Image**
+
+### Step 1: Build the Project
 
 ```bash
-kubectl port-forward pod/controlcenter-0 9021
+# Navigate to project root
+cd Flink-Alert
+
+# Clean and build the project
+mvn clean package
+
+# Verify the jar was created
+ls -lh target/flinkalert-1.0-SNAPSHOT.jar
 ```
-6. Create the following topics that will be used in the project:
 
-    a. users
-    b. pageviews
-    c. filtered-pageviews
-    d. enriched-pageviews
-    e. aggregated-users
+**Expected Output:**
+- JAR file created at `target/flinkalert-1.0-SNAPSHOT.jar`
+- Main class in manifest: `org.example.jobs.AlertTriggerJob`
 
-7. Create users and pageviews datagen connectors from the connect section of the Control Center UI. Use the files provided in resources/kafka/connectors directory.
-
-8. Port-forward Kafka pod for local access:
+### Step 2: Build Docker Image
 
 ```bash
-kubectl port-forward pod/kafka-0 9092
+# Build the Docker image
+docker build -t flink-alert:1.0.0 .
+
+# Verify the image was created
+docker images | grep flink-alert
+
+# Optional: If using a private registry, tag and push
+# docker tag flink-alert:1.0.0 <registry>/flink-alert:1.0.0
+# docker push <registry>/flink-alert:1.0.0
 ```
 
-# Quick Start (Automated Setup)
+**Important:** 
+- Image tag `flink-alert:1.0.0` must match the `image:` field in `flink-app.yaml`
+- If using a private registry, update the image name in `flink-app.yaml` accordingly
 
-For automated cluster setup, see [QUICK_START.md](QUICK_START.md) or run:
+### Step 3: Load Image to Cluster (if needed)
+
+If your Kubernetes cluster can't pull from your local Docker registry:
+
+**Option A: Use Kind/Minikube (local cluster)**
+```bash
+# For Kind
+kind load docker-image flink-alert:1.0.0
+
+# For Minikube
+minikube image load flink-alert:1.0.0
+```
+
+**Option B: Push to accessible registry**
+```bash
+# Tag for your registry
+docker tag flink-alert:1.0.0 <your-registry>/flink-alert:1.0.0
+
+# Push
+docker push <your-registry>/flink-alert:1.0.0
+
+# Update flink-app.yaml image field to: <your-registry>/flink-alert:1.0.0
+```
+
+### Step 4: Configure Alert Type
+
+Edit `src/main/resources/FlinkCluster/flink-app.yaml`:
+
+```yaml
+job:
+  jarURI: local:///opt/flink/lib/flinkalert-1.0-SNAPSHOT.jar
+  state: running
+  parallelism: 1
+  upgradeMode: stateless
+  args: ["normal"]  # <-- Use "normal" for no intentional alert trigger
+```
+
+**Available alert types:**
+- `job-failing` - Simulates job failures
+- `job-restarting` - Causes repeated restarts
+- `checkpoint-failure` - Triggers checkpoint failures
+- `checkpoint-stuck` - Simulates stuck checkpoints
+- `checkpoint-duration-high` - Increases checkpoint duration
+- `cpu-high` - Simulates high CPU usage
+- `memory-high` - Simulates high memory usage
+- `jobmanager-cpu-high` - Simulates high JobManager CPU usage
+- `jobmanager-memory-high` - Simulates high JobManager heap usage
+- `restart-rate-high` - Causes high restart rate
+
+
+## Step 5: Run the Automated Cluster Setup Script
+
+You can use the project setup script instead of performing the monitoring and demo resource setup manually:
 
 ```bash
 ./setup-cluster.sh
 ```
 
-This script automates the deployment of:
-- Flink prerequisites (CMF REST class, Flink environment, PVC)
-- Both Flink applications (streaming and batch)
-- Prometheus for metrics collection
-- Grafana with pre-configured Flink dashboards
+This script brings up and/or configures:
+- `confluent` and `monitoring` namespaces
+- Flink prerequisites from `src/main/resources/FlinkCluster` (CMF REST class, Flink environment, PVC)
+- Flink application (`flink-app.yaml`)
+- Prometheus in the `monitoring` namespace
+- Grafana in the `monitoring` namespace (using `src/main/resources/grafana-values.yaml` when present)
+- Grafana alert provisioning config map from `src/main/resources/alerting-provisioning-alerttrigger.yaml` and restarts Grafana to reload alert rules
+- Flink Kubernetes Operator upgrade with Prometheus metrics configuration (when `src/main/resources/prometheus-values.yaml` is present)
 
-# Build and Run the Project
-To build and run the project, follow these steps:
-1. Install Java 17, Maven if you haven't already.
-2. Run the following command to build the project:
+Note: Script will take time when running first time.
 
-```bash
-mvn clean package
-```
-3. Then build the Docker image as described below.
+### Step 6: Verify Prerequisites
 
-
-# Build Docker Image
-
-To build the Docker image using the provided `Dockerfile`, run the following command from the project root (after building your JAR with Maven):
+Ensure these resources exist in your cluster:
 
 ```bash
-docker build -t flink-training:1.0.0 .
+# Check Flink environment
+kubectl get flinkenvironment flink-env1 -n confluent
+
+# Check PVC
+kubectl get pvc flink-pvc -n confluent
+
+# Check CMF REST class
+kubectl get cmfrestclass default -n confluent
 ```
 
-# Monitoring
-
-The following components are part of the Prometheus installation:
-- **Prometheus Server:** The core component that scrapes and stores metrics data.
-- **Alertmanager:** Manages and sends alerts based on rules defined in Prometheus.
-- **PushGateway:** A metric cache for short-lived jobs that cannot be scraped directly.
-
-### 1. Install Prometheus
-Use Helm to install the Prometheus stack in the `monitoring` namespace.
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace
-```
-
-### 2. Access Prometheus UI
-The Prometheus Server is the core of the monitoring system, responsible for collecting and storing metrics. Forward the Prometheus server port to your local machine to access the UI at `http://localhost:9090`.
-```bash
-export POD_NAME=$(kubectl get pods --namespace monitoring -l "app.kubernetes.io/name=prometheus,app.kubernetes.io/instance=prometheus" -o jsonpath="{.items[0].metadata.name}")
-kubectl --namespace monitoring port-forward $POD_NAME 9090
-```
-
-### 3. Access Alertmanager UI
-The Alertmanager handles alerts sent by client applications such as the Prometheus server. Forward the Alertmanager port to your local machine to access the UI at `http://localhost:9093`.
-```bash
-export POD_NAME=$(kubectl get pods --namespace monitoring -l "app.kubernetes.io/name=alertmanager,app.kubernetes.io/instance=prometheus" -o jsonpath="{.items[0].metadata.name}")
-kubectl --namespace monitoring port-forward $POD_NAME 9093
-```
-
-### 4. Access PushGateway UI
-The PushGateway allows ephemeral and batch jobs to expose their metrics to Prometheus. Forward the PushGateway port to your local machine to access the UI at `http://localhost:9091`.
-```bash
-export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=prometheus-pushgateway,component=pushgateway" -o jsonpath="{.items[0].metadata.name}")
-kubectl --namespace monitoring port-forward $POD_NAME 9091
-```
-
-### 5. Enabling Prometheus Metrics on Flink Kubernetes Operator
-
-To enable the Prometheus metrics reporter for the Flink operator, create a file named `prometheus-values.yaml` with the following content:
-
-```yaml
-defaultConfiguration:
-  create: true
-  append: true
-  flink-conf.yaml: |+
-    kubernetes.operator.metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
-    kubernetes.operator.metrics.reporter.prom.port: 9999
-metrics:
-  port: 9999
-operatorPod:
-  annotations:
-    metrics.dynatrace.com/port: "9999"
-    metrics.dynatrace.com/scrape: "true"
-    prometheus.io/port: "9999"
-    prometheus.io/scrape: "true"
-```
-
-Then, apply the changes by running the following Helm command:
+### Step 7: Verify flink application
 
 ```bash
-helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator --namespace confluent --values prometheus-values.yaml
+# Apply the manifest
+kubectl apply -f src/main/resources/FlinkCluster/flink-app.yaml
+
+# Watch the FlinkApplication status
+kubectl get flinkapplication my-app1 -n confluent -w
 ```
 
-### 6. Key Flink Metrics for Monitoring and Alerting
+**Expected Output:**
+```
+NAME      STATUS    AGE
+my-app1   Running   10s
+```
 
-Here are some important Flink metrics that you can monitor in Prometheus to ensure your jobs are running smoothly. You can also use these metrics to configure alerts in Alertmanager.
+### Step 8: Monitor the Job
 
-| Metric                                                 | Description                                                      | Example Alert Condition                                                               |
-| ------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| **Job Health & Status**                                |                                                                  |                                                                                       |
-| `flink_jobmanager_job_uptime`                          | The time that the job has been running without interruption.     |                                                                                       |
-| `flink_jobmanager_job_numberOfCompletedCheckpoints`    | The number of successfully completed checkpoints.                |                                                                                       |
-| `flink_jobmanager_job_numberOfFailedCheckpoints`       | The number of failed checkpoints.                                | `increase(flink_jobmanager_job_numberOfFailedCheckpoints[5m]) > 0`                    |
-| `flink_jobmanager_job_runningState`                    | Boolean (1/0) expressing if a job is currently running.          | `flink_jobmanager_job_runningState == 0` for more than 2 minutes                      |
-| `flink_jobmanager_job_restartingState`                 | Boolean (1/0) expressing if a job is currently restarting.       | `flink_jobmanager_job_restartingState == 1` for more than 5 minutes                   |
-| `flink_jobmanager_job_failingState`                    | Boolean (1/0) expressing if a job is currently failing.          | `flink_jobmanager_job_failingState == 1` for more than 30 seconds                     |
-| `flink_jobmanager_job_deployingState`                  | 1 if job is deploying tasks, 0 otherwise.                        | `flink_jobmanager_job_deployingState == 1` for more than 5 minutes                    |
-| **Restarts & Failures**                                |                                                                  |                                                                                       |
-| `flink_taskmanager_job_task_numRestarts`               | Total restarts including scaling and failures.                   | `increase(flink_taskmanager_job_task_numRestarts[5m]) > 3`                            |
-| **Checkpointing**                                      |                                                                  |                                                                                       |
-| `flink_jobmanager_job_lastCheckpointDuration`          | Time (in ms) the last checkpoint took to complete.               |                                                                                       |
-| `flink_jobmanager_job_lastCheckpointSize`              | Size (in bytes) of the last checkpoint (operator state only).    |                                                                                       |
-| `flink_jobmanager_job_lastCheckpointFullSize`          | Size (in bytes) of the last full checkpoint (including metadata).|                                                                                       |
-| `flink_taskmanager_job_task_checkpointAlignmentTime`   | Time taken for stream alignment during checkpointing.            |                                                                                       |
-| **JVM & System**                                       |                                                                  |                                                                                       |
-| `flink_jobmanager_Status_JVM_CPU_Load`                 | JVM CPU usage on the JobManager (0.0–1.0).                       | `flink_jobmanager_Status_JVM_CPU_Load > 0.7` for a sustained period                   |
-| `flink_taskmanager_Status_JVM_CPU_Load`                | JVM CPU usage on the TaskManager (0.0–1.0).                      | `flink_taskmanager_Status_JVM_CPU_Load > 0.7` for a sustained period                  |
-| `flink_jobmanager_Status_JVM_Memory_Heap_Used`         | Heap memory currently used by the JobManager.                    | `flink_jobmanager_Status_JVM_Memory_Heap_Used / flink_jobmanager_Status_JVM_Memory_Heap_Max > 0.7` |
-| `flink_taskmanager_Status_JVM_Memory_Heap_Used`        | Heap memory currently used by the TaskManager.                   | `flink_taskmanager_Status_JVM_Memory_Heap_Used / flink_taskmanager_Status_JVM_Memory_Heap_Max > 0.7` |
-| **Kubernetes Operator**                                |                                                                  |                                                                                       |
-| `flink_k8soperator_namespace_JmDeploymentStatus_ERROR_Count` | Number of jobmanager deployments running into errors.            | `flink_k8soperator_namespace_JmDeploymentStatus_ERROR_Count > 1`                      |
+**Recommended: Use the helper script to port-forward all required services**
 
+```bash
+./port-forward-services.sh
+```
 
+This starts port-forwards for:
+- Flink UI (`my-app1`) on `http://localhost:8081`
+- Prometheus on `http://localhost:9090`
+- Grafana on `http://localhost:3000`
+- Alertmanager on `http://localhost:9093`
+
+Keep this script running while you monitor the job. Use `Ctrl+C` to stop all port-forwards.
+
+**Manual monitoring commands (optional / fallback):**
+
+**Check JobManager Pod:**
+```bash
+# Get JobManager pod name
+kubectl get pods -n confluent -l app=flink,component=jobmanager
+
+# View logs
+kubectl logs -f <jobmanager-pod-name> -n confluent
+```
+
+**Check TaskManager Pods:**
+```bash
+# Get TaskManager pod names
+kubectl get pods -n confluent -l app=flink,component=taskmanager
+
+# View logs
+kubectl logs -f <taskmanager-pod-name> -n confluent
+```
+
+**Check Job Status via Flink UI:**
+```bash
+# Port forward to Flink UI
+kubectl port-forward -n confluent svc/<flink-rest-service> 8081:8081
+
+# Open browser: http://localhost:8081
+```
+
+**Check Prometheus Metrics:**
+```bash
+# Port forward to Prometheus (if configured)
+kubectl port-forward -n monitoring svc/prometheus-server 9090:9090
+
+# Query metrics, e.g.:
+# flink_jobmanager_job_failingState{job_name="AlertTriggerJob"}
+```
+
+### Step 9: Verify Alert Triggered
+
+Based on the alert type you selected:
+
+1. **Check Prometheus metrics** - Query the relevant metric for your alert type
+2. **Check Grafana dashboards** - View Flink dashboards
+3. **Check AlertManager** - Verify alerts are firing
+4. **Check job logs** - Look for expected behavior (errors, slow processing, etc.)
+
+### Step 10: Change Alert Type (Optional)
+
+To test a different alert:
+
+```bash
+# Edit flink-app.yaml and change args
+vim src/main/resources/FlinkCluster/flink-app.yaml
+# Change: args: ["normal"] to args: ["backpressure"]
+
+# Apply the updated manifest
+kubectl apply -f src/main/resources/FlinkCluster/flink-app.yaml
+
+# The operator will restart the job with new args
+```
+
+### Step 11: Cleanup
+
+You can use the project cleanup script.
+
+```bash
+./cleanup-cluster.sh
+```
