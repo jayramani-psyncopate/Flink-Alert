@@ -1,0 +1,93 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: my-app1
+  namespace: confluent
+spec:
+  flinkEnvironment: flink-env1
+  image: flink-alert:1.0.0
+  flinkVersion: v1_20
+  flinkConfiguration:
+    "env.java.opts.all": >
+      --add-opens java.base/java.util=ALL-UNNAMED
+      --add-opens java.base/java.lang=ALL-UNNAMED
+      --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+      --add-opens java.base/java.io=ALL-UNNAMED
+      --add-opens java.base/java.net=ALL-UNNAMED
+      --add-opens java.base/java.nio=ALL-UNNAMED
+      --add-opens java.base/java.time=ALL-UNNAMED
+      --add-opens java.base/java.util.concurrent=ALL-UNNAMED
+      --add-opens java.base/java.util.stream=ALL-UNNAMED
+    "taskmanager.numberOfTaskSlots": "1"
+    "execution.checkpointing.interval": "10s"
+    "high-availability.type": "kubernetes"
+    "high-availability.storageDir": file:///mnt/flink/high-availability
+    "metrics.job.status.enable": "STATE"
+    "metrics.reporters": "prom"
+    "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+    "metrics.reporter.prom.port": "9250"
+    "metrics.operator-io-metrics.enabled": "true"
+    "rest.profiling.enabled": "true"
+    "classloader.resolve-order": "parent-first"
+    "state.backend.type": "rocksdb"
+    "execution.checkpointing.dir": file:///mnt/flink/checkpoints
+    "execution.checkpointing.savepoint-dir": file:///mnt/flink/savepoints
+  serviceAccount: flink
+  jobManager:
+    resource:
+      memory: 1024m
+      cpu: 1
+    podTemplate:
+      metadata:
+        annotations:
+          #          metrics.dynatrace.com/scrape: "true"
+          #          metrics.dynatrace.com/port: "9250"
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "9250"
+      spec:
+        initContainers:
+          - name: init-fs
+            image: busybox
+            command: [ 'sh', '-c', 'mkdir -p /mnt/flink/savepoints /mnt/flink/checkpoints /mnt/flink/high-availability && chmod -R 777 /mnt/flink' ]
+            volumeMounts:
+              - mountPath: /mnt/flink
+                name: flink-storage
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /mnt/flink
+                name: flink-storage
+        volumes:
+          - name: flink-storage
+            persistentVolumeClaim:
+              claimName: flink-pvc
+  taskManager:
+    resource:
+      memory: 1024m
+      cpu: 1
+    podTemplate:
+      metadata:
+        annotations:
+          #          metrics.dynatrace.com/scrape: "true"
+          #          metrics.dynatrace.com/port: "9250"
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "9250"
+      spec:
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /mnt/flink
+                name: flink-storage
+        volumes:
+          - name: flink-storage
+            persistentVolumeClaim:
+              claimName: flink-pvc
+  job:
+    jarURI: local:///opt/flink/lib/flinkalert-1.0-SNAPSHOT.jar
+    state: running
+    parallelism: 1
+    upgradeMode: stateless
+    args: ["normal"]
+  cmfRestClassRef:
+    name: default
+    namespace: confluent

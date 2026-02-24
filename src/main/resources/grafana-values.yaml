@@ -1,0 +1,66 @@
+adminUser: admin
+adminPassword: admin123
+
+service:
+  type: ClusterIP
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        isDefault: true
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: flink
+        orgId: 1
+        folder: Flink
+        type: file
+        disableDeletion: false
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/flink
+
+dashboards:
+  flink:
+    flink_main:
+      gnetId: 11049
+      datasource: Prometheus
+    flink_jobs_tasks:
+      gnetId: 10369
+      datasource: Prometheus
+    flink_ops_combo:
+      gnetId: 14840
+      datasource: Prometheus
+
+#    flink_2021_jm_tm:
+#      gnetId: 14911
+#      datasource: Prometheus   # Apache Flink (2021) Dashboard for JM/TM
+#    flink_kafka_k8s_alt:
+#      gnetId: 8966
+#      datasource: Prometheus   # Flink Metrics (with Kafka) on K8S
+#    flink_jvm_taskmanager:
+#      gnetId: 5157
+#      datasource: Prometheus   # Flink_JVM_Taskmanager (JVM/IO focus)
+#    flink_jvm_jm_tm:
+#      gnetId: 5151
+#      datasource: Prometheus   # Flink_JVM_JobManager_TaskManager
+#    flink_jvm_metrics:
+#      gnetId: 14160
+#      datasource: Prometheus   # Flink_JVM_Metrics (JM & TM JVM)
+#    flink_general_alt:
+#      gnetId: 13055
+#      datasource: Prometheus
+extraConfigmapMounts:
+  - name: grafana-alerting-provisioning
+    configMap: grafana-alerting-provisioning
+    mountPath: /etc/grafana/provisioning/alerting
+    readOnly: false
+
+
+

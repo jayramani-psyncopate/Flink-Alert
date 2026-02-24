@@ -1,0 +1,65 @@
+#jobmanager pod will fail
+#apiVersion: chaos-mesh.org/v1alpha1
+#kind: PodChaos
+#metadata:
+#  name: jobmanager-pod-failure
+#  namespace: chaos-mesh
+#spec:
+#  action: pod-failure
+#  mode: one
+#  duration: "10m"
+#  selector:
+#    namespaces:
+#      - confluent
+#    labelSelectors:
+#      "app": "my-app1"
+#      "component": "jobmanager"
+
+
+#TaskManager CPU Usage high, checkpoint failure high
+#apiVersion: chaos-mesh.org/v1alpha1
+#kind: NetworkChaos
+#metadata:
+#  name: network-partition
+#  namespace: chaos-mesh
+#spec:
+#  action: partition
+#  mode: all
+#  selector:
+#    namespaces:
+#      - confluent
+#    labelSelectors:
+#      "app": "my-app1"
+#  direction: to
+#  target:
+#    mode: all
+#    selector:
+#      namespaces:
+#        - confluent
+#      labelSelectors:
+#        "app": "my-app1"
+#        "component": "jobmanager"
+#  duration: "2m"
+
+
+#task manager CPU usage high
+#apiVersion: chaos-mesh.org/v1alpha1
+#kind: StressChaos
+#metadata:
+#  name: taskmanager-cpu-stress-high
+#  namespace: chaos-mesh
+#spec:
+#  mode: all
+#  selector:
+#    namespaces:
+#      - confluent
+#    labelSelectors:
+#      "app": "my-app1"
+#      "component": "taskmanager"
+#  stressors:
+#    cpu:
+#      workers: 2
+#      load: 90
+#  duration: "5m"
+
+

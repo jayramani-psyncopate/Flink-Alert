@@ -1,0 +1,1000 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: Alert Manager
+    receivers:
+      - uid: cf8iao8kg1hq8d
+        type: prometheus-alertmanager
+        settings:
+          url: http://prometheus-alertmanager.monitoring.svc.cluster.local:9093/
+        disableResolveMessage: false
+groups:
+  - orgId: 1
+    name: Flink Evaluation (30s)
+    folder: Custom Dashboards
+    interval: 10s
+    rules:
+      - uid: af6ya7e8b80lcb
+        title: Flink – Job in FAILING state
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: flink_jobmanager_job_failingState{job_name="AlertTriggerJob"}
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: flink-jm-job-dashboard
+        panelId: 28
+        noDataState: NoData
+        execErrState: Error
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: flink-jm-job-dashboard
+          __panelId__: "28"
+          description: Flink job {{ $labels.job_name }} has been in FAILING state for more than 1 minute. Check exceptions in the Flink UI and JM logs.
+          summary: Job {{ $labels.job_name }} is in FAILING state
+        labels:
+          job_name: AlertTriggerJob
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: df6ydhqr4yoe8c
+        title: Flink – Job stuck in RESTARTING
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: flink_jobmanager_job_restartingState{job_name="AlertTriggerJob"}
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: flink-jm-job-dashboard
+        panelId: 30
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: flink-jm-job-dashboard
+          __panelId__: "30"
+          description: Job {{$labels.job_name}} is RESTARTING for more than 5 minutes. Check repeated failures, checkpoint issues, resource pressure or external system errors.
+          summary: Job {{$labels.job_name}} stuck in RESTARTING
+        labels:
+          job_name: AlertTriggerJob
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: ff6yx1519dczkc
+        title: Flink – Job not running
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: flink_jobmanager_job_runningState{job_name="AlertTriggerJob"}
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: eq
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: flink-jm-job-dashboard
+        panelId: 27
+        noDataState: NoData
+        execErrState: Error
+        for: 30s
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: flink-jm-job-dashboard
+          __panelId__: "27"
+          description: Job {{ $ labels.job_name }}is not in RUNNING state for more than 1 minute. Verify status in Flink UI / operator and restart from latest healthy checkpoint if needed.
+          summary: Job {{ $ labels.job_name }}is not running
+        labels:
+          job_name: AlertTriggerJob
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: af6yzvo8r8ge8e
+        title: Flink – Job downtime > 60s
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: flink_jobmanager_job_downtime{job_name="AlertTriggerJob"} / 1000
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 30
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: ""
+        panelId: 0
+        noDataState: NoData
+        execErrState: Error
+        for: 30s
+        keepFiringFor: 10s
+        annotations:
+          description: Job {{$labels.job_name}} downtime has exceeded 60s. Confirm whether this is expected (deployment) or due to failures.
+          summary: Job downtime > 60s
+        labels:
+          job_name: AlertTriggerJob
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: ef6z86bxey1vka
+        title: Flink – Job restart rate too high
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |-
+                increase(
+                  flink_jobmanager_job_numRestarts{job_name="AlertTriggerJob"}[10m]
+                )
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 3
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: flink-jm-job-dashboard
+        panelId: 14
+        noDataState: NoData
+        execErrState: Error
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: flink-jm-job-dashboard
+          __panelId__: "14"
+          description: Job {{$labels.job_name}} restarted more than 3 times in 10 minutes. Investigate recurring exceptions / OOM/configuration issues.
+          summary: Job {{$labels.job_name}} restart rate high
+        labels:
+          job_name: AlertTriggerJob
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: ef6zbi98j356od
+        title: Flink – Checkpoint failures too high
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |
+                increase(
+                  flink_jobmanager_job_numberOfFailedCheckpoints{
+                    job_name="AlertTriggerJob"
+                  }[10m]
+                )
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: bbc82bd3-419c-4b67-95d8-d69c5312c90
+        panelId: 2
+        noDataState: NoData
+        execErrState: Error
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: bbc82bd3-419c-4b67-95d8-d69c5312c90
+          __panelId__: "2"
+          description: Job {{$labels.job_name}} has failing checkpoints in the last 10 minutes. Check state backend, storage, serialization and logs.
+          summary: Checkpoint failures for {{$labels.job_name}}
+        labels:
+          job_name: AlertTriggerJob
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: bf6zc6dh1j0u8f
+        title: Flink – Checkpoints stuck in-progress
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |
+                flink_jobmanager_job_numberOfInProgressCheckpoints{
+                  job_name="AlertTriggerJob"
+                }
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: bbc82bd3-419c-4b67-95d8-d69c5312c90
+        panelId: 3
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          __dashboardUid__: bbc82bd3-419c-4b67-95d8-d69c5312c90
+          __panelId__: "3"
+          description: Job {{$labels.job_name}} has checkpoints stuck in-progress for more than 10 minutes. Check I/O to checkpoint storage and backpressure.
+          summary: Checkpoints stuck in-progress for {{$labels.job_name}}
+        labels:
+          job_name: AlertTriggerJob
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: ckptdurhigha01
+        title: Flink – Checkpoint duration too high
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |
+                flink_jobmanager_job_lastCheckpointDuration{
+                  job_name="AlertTriggerJob"
+                } / 1000
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.1
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: bbc82bd3-419c-4b67-95d8-d69c5312c90
+        panelId: 4
+        noDataState: NoData
+        execErrState: Error
+        for: 0
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: bbc82bd3-419c-4b67-95d8-d69c5312c90
+          __panelId__: "4"
+          description: Job {{$labels.job_name}} has high checkpoint duration for more than 1 minute. Check state size growth, storage latency, and backpressure.
+          summary: Checkpoint duration high for {{$labels.job_name}}
+        labels:
+          job_name: AlertTriggerJob
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+  - orgId: 1
+    name: Flink Evaluation Group
+    folder: Custom Dashboards
+    interval: 10s
+    rules:
+      - uid: af9cvssak0q2ob
+        title: Flink – TaskManager CPU > 50%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |-
+                max by (tm_id) (
+                  flink_taskmanager_Status_JVM_CPU_Load
+                ) * 100
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 50
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: flink-taskmanager-prod
+        panelId: 17
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: flink-taskmanager-prod
+          __panelId__: "17"
+          description: |-
+            Identify which jobs/operators on that TM are most active.
+            Consider scaling out (more TMs) or increasing resources per TM.
+            Inspect for tight loops or inefficient user code.
+          summary: TaskManager CPU usage is above the threshold
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: cf9cwbvqg16o0b
+        title: Flink – TaskManager heap usage > 50%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |-
+                max by (tm_id) (
+                  100 * flink_taskmanager_Status_JVM_Memory_Heap_Used
+                    / flink_taskmanager_Status_JVM_Memory_Heap_Max
+                )
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 50
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: flink-taskmanager-prod
+        panelId: 5
+        noDataState: NoData
+        execErrState: Error
+        for: 30s
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: flink-taskmanager-prod
+          __panelId__: "5"
+          description: |-
+            Check GC metrics and logs for frequent full GCs or OOM.
+            Reduce per-record state usage or buffer sizes if possible.
+            Increase memory for the TaskManager or decrease parallelism per TM.
+          summary: High Memory usage
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: jm9cpu50alert01
+        title: Flink – JobManager CPU > 50%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |-
+                max(
+                  flink_jobmanager_Status_JVM_CPU_Load
+                ) * 100
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 50
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: flink-taskmanager-prod
+        panelId: 17
+        noDataState: NoData
+        execErrState: Error
+        for: 30s
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: flink-taskmanager-prod
+          __panelId__: "17"
+          description: |-
+            JobManager JVM CPU usage is high for a sustained period.
+            Check active deployments, scheduling pressure, and cluster load.
+            Consider increasing JobManager CPU resources if persistent.
+          summary: JobManager CPU usage is above the threshold
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: jm9mem50alert01
+        title: Flink – JobManager heap usage > 50%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |-
+                max(
+                  100 * flink_jobmanager_Status_JVM_Memory_Heap_Used
+                    / flink_jobmanager_Status_JVM_Memory_Heap_Max
+                )
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 50
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: flink-taskmanager-prod
+        panelId: 5
+        noDataState: NoData
+        execErrState: Error
+        for: 30s
+        keepFiringFor: 10s
+        annotations:
+          __dashboardUid__: flink-taskmanager-prod
+          __panelId__: "5"
+          description: |-
+            JobManager JVM heap usage is high for a sustained period.
+            Check JM logs, GC pressure, and active submissions/checkpoint coordination load.
+            Consider increasing JobManager memory resources if persistent.
+          summary: JobManager heap usage is above the threshold
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: ff9cwu9xahx4wf
+        title: Flink – Operator input errors
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |-
+                sum by (operator_name) (
+                  increase(
+                    flink_taskmanager_job_task_operator_numRecordsInErrors{
+                      job_name="AlertTriggerJob"
+                    }[5m]
+                  )
+                )
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 30s
+        keepFiringFor: 10s
+        annotations:
+          description: |-
+            Inspect operator logs for specific bad records or parse errors.
+            Validate upstream data formats and schemas.
+            Implement dead-letter handling or stricter validation if needed.
+          summary: Operator input error
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: bf9cx960jhszkf
+        title: Flink – Operator Kube API failures
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |-
+                sum by (namespace) (
+                  flink_k8soperator_KubeClient_HttpRequest_Failed_NumPerSecond
+                )
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 2
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        annotations:
+          summary: Operator Kube API failures
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: ff9cxhpel5zi8d
+        title: Flink – JM deployment missing or in error
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |-
+                sum by (namespace) (
+                  flink_k8soperator_namespace_JmDeploymentStatus_ERROR_Count
+                  + flink_k8soperator_namespace_JmDeploymentStatus_MISSING_Count
+                )
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        keepFiringFor: 10s
+        annotations:
+          description: |-
+            Check the JM Deployment status in Kubernetes.
+            Fix the configuration and trigger reconciliation via the operator.
+          summary: JM Deployment missing/error
+        labels:
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager
+      - uid: bf9d67i2jv3swe
+        title: TaskManager count below expected
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: |
+                flink_jobmanager_numRegisteredTaskManagers{app="my-app1"}
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        annotations:
+          summary: TaskManager count is below expected
+        isPaused: false
+        notification_settings:
+          receiver: Alert Manager

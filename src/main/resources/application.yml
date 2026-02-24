@@ -1,0 +1,14 @@
+app:
+  # If you run the app on your laptop:
+  #   kubectl -n confluent port-forward svc/kafka 9092:9092
+  # then use localhost:9092
+  bootstrapServers: "kafka.confluent.svc.cluster.local:9092"
+
+  # If you run INSIDE the cluster later:
+  # bootstrapServers: "kafka:9092"
+
+  inputTopic: "users"
+  outputTopic: "users_after"
+  consumerGroupId: "flink-transform-users"
+  parallelism: 1
+  checkpointMs: 30000
